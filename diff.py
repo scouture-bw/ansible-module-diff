@@ -137,6 +137,7 @@ import time
 import re
 import subprocess
 import yaml
+import difflib
 
 # Python Ansible imports
 from ansible.module_utils.basic import AnsibleModule
@@ -370,6 +371,21 @@ def main():
     }
     # Did we have any changes?
     changed = (source != target)
+
+    if changed:
+        # Convert source/target inputs to lists of lines
+        source_lines = re.split('(.*\n?)', source)[1::2]
+        target_lines = re.split('(.*\n?)', target)[1::2]
+
+	# If source is a file, include its name in the diff headers
+        source_type = module.params.get('source_type')
+        if source_type == 'file':
+            source_fname = os.path.basename(module.params.get('source'))
+            patch = difflib.unified_diff(source_lines, target_lines, fromfile=source_fname, tofile=source_fname)
+        else:
+            patch = difflib.unified_diff(source_lines, target_lines)
+
+        diff['patch'] = ''.join(patch)
 
     # Ansible module returned variables
     result = dict(
